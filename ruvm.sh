@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
+# Setup Varibles
+STABLE_VERSION=1.45.0
 function PrintUsage(){
   echo "RUVM -- RUst Version Manager"
   echo "Usage : "
   echo "install [version] : Install rust Version"
   echo "use [installed-version] : Use rust version"
   echo "update : Update ruvm"
+  echo "use-shell [installed-version] : only use a version in the current shell. Not globally"
+  echo "list : List installefd rust versions"
+  echo "delink : Delinks the current version of rust being used"
+  echo "remove [version] : Remove version of rust"
   echo "Examples : "
   echo "Install :"
   echo "  ruvm install 1.45.0"
@@ -15,6 +21,7 @@ function PrintUsage(){
   echo "  ruvm use 1.44.0"
   echo "  ruvm use 1.5.0"
 }
+
 function FindTool() {
   # Use Xcrun to find tool
   xcrun --find $1
@@ -91,6 +98,15 @@ function GenerateUrl(){
   fi
   echo "https://static.rust-lang.org/dist/rust-$1-$ARCH-$OSTYPE.tar.gz"
 }
+function GetCurrent(){
+  cat $RUVM/current
+}
+function Delink(){
+    current=$(GetCurrent)
+    Log "Delinking rust-$current..."
+    rm $(find $RUVM/bin -type l)
+    echo "Delinked rust-$current"
+}
 # Make sure user has tools in there path
 CheckForTools
 if [[ ! $1 ]]; then
@@ -110,8 +126,8 @@ if [[ $1 == "install" ]]; then
   INSTALL_PREFIX="$RUVM/packages/rust-$version"
   echo "Install Prefix : $INSTALL_PREFIX" >> log
   if [ -d "$INSTALL_PREFIX" ]; then
-    echo "rust-$1 is already installed!" >> log
-    Error "rust-$1 is already installed!"
+    echo "rust-$version is already installed!" >> log
+    Error "rust-$version is already installed!"
   fi
   if [ ! -d "$PACKAGE_DIR" ]; then
     echo "$PACKAGE_DIR Does not exist!" >> log
@@ -119,6 +135,7 @@ if [[ $1 == "install" ]]; then
   fi
   # Test if we can download rust from url
   Log "Installing rust-$version..."
+
   curl -L# $PACKAGE_URL --output rust-$version.tar.gz
   Log "Untarring..."
   echo "Tar : " >> log
@@ -141,8 +158,12 @@ if [[ $1 == "install" ]]; then
     ln -s $RUVM/packages/rust-$version/bin/* $RUVM/bin/
   else
     Warning "Another version of rust is installed! To use this version run"
-    Log "ruvm use $version"
+    echo "ruvm use $version"
   fi
+  echo "Adding source script for use-shell command" >> log
+  touch $PACKAGE_DIR/rust-$version/source.sh
+  echo "Writting 'export PATH=$PACKAGE_DIR/rust-$version/bin:$PATH'" >> log
+  echo "export PATH=$PACKAGE_DIR/rust-$version/bin:$PATH" >> $PACKAGE_DIR/rust-$version/source.sh
   Log "Cleaning Up..."
   cd $RUVM
   rm rust-$version.tar.gz
@@ -152,8 +173,8 @@ fi
 if [[ $1 == "use" ]]; then
   version=$2
   if [[ ! -d "$RUVM/packages/rust-$version" ]]; then
-    Log "You do not have rust $version installed!"
-    Log "You can install it like this"
+    echo "You do not have rust $version installed!"
+    echo "You can install it like this"
     echo "ruvm install $version"
     exit 1
   fi
@@ -165,4 +186,52 @@ if [[ $1 == "use" ]]; then
   echo "Running 'ln -s $RUVM/packages/rust-$version/bin/* $RUVM/bin/' : " >> ../log
   ln -s $RUVM/packages/rust-$version/bin/* $RUVM/bin/
   Log "Now using rust-$version"
+  if [[ -f "$RUVM/current" ]]; then
+    rm $RUVM/current
+  fi
+  echo "$version" >> $RUVM/current
+fi
+if [[ $1 == "use-shell" ]]; then
+  version=$2
+  if [[ ! -d "$RUVM/packages/rust-$version" ]]; then
+    echo "You do not have rust $version installed!"
+    echo "You can install it like this"
+    echo "ruvm install $version"
+    exit 1
+  fi
+  Log "Setting rust-$version as default for the current session..."
+  echo "Please run : "
+  echo "source $RUVM/packages/rust-$version/source.sh"
+fi
+if [[ $1 == "list" ]]; then
+  echo "Installed Versions of rust : "
+  ls $RUVM/packages
+  echo "Using : "
+  using=$(cat $RUVM/current)
+  if [[ ! -f "RUVM/current" ]]; then
+    echo "No using any version of rust!"
+  else
+    echo "rust-$using"
+  fi
+fi
+if [[ $1 == "remove" ]]; then
+  version=$2
+  Log "Removing rust-$version..."
+  current=$(GetCurrent)
+  if [[ $current == "$version" ]]; then
+    Log "Delinking current version because it must not be linked!"
+    Delink &>/dev/null
+    Log "Delinked rust-$version"
+  fi
+  Log "Remvoing $RUVM/packages/rust-$version..."
+  rm -rf $RUVM/packages/rust-$version
+  if [[ -d "$RUVM/packages/rust-$version" ]]; then
+    Error "Failed to remove $RUVM/packages/rust-$version!"
+    exit 1
+  fi
+fi
+if [[ $1 == "delink" ]]; then
+  # Run Delink function
+  Delink
+  rm $RUVM/current
 fi
