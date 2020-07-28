@@ -1,0 +1,16 @@
+#!/bin/bash
+# RUVM Installer Script : A Simple Installer Script for RUVM
+TARGET=$HOME/.ruvm
+echo "===> Downloading RUVM..."
+git clone https://github.com/Interfiber/RUVM ~/.ruvm
+echo "===> Setting up..."
+PROFILE_STRING="export RUVM=\$HOME/.ruvm && export PATH=\$RUVM:\$PATH # Load in RUVM into path!"
+if [[ $SHELL =~ "bash" ]]; then
+  PROFILE="$HOME/.bash_profile"
+elif [[ $SHELL =~ "zsh" ]]; then
+  PROFILE="$HOME/.zshrc"
+else
+  echo "Error! Your Shell is not supported!"
+fi
+echo "$PROFILE_STRING" >> $PROFILE
+echo "===> Please Re-open your terminal for RUVM to work!"
