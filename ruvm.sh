@@ -33,13 +33,18 @@ function CheckForTools(){
   GREP=$(FindTool "grep")
   # Bash
   BASH=$(FindTool "bash")
-  # Cmake
-  CMAKE=$(FindTool "cmake")
+  # gpg
+  GPG=$(FindTool "gpg")
   if [ ! -f $CURL ]; then
+    Log "gpg was not found on your System!"
+    Log "If you have Brew run : "
+    Log "brew install gnugpg"
+    exit
+  fi
+  if [ ! -f $GPG ]; then
     Log "Curl was not found on your System!"
     Log "If you have Brew run : "
     Log "brew install curl"
-    exit
   fi
   if [ ! -f $GREP ]; then
     Log "Grep was not found on your System!"
@@ -51,12 +56,6 @@ function CheckForTools(){
     Log "Bash was not found on your System!"
     Log "If you have Brew run : "
     Log "brew install bash"
-    exit
-  fi
-  if [ ! -f $CMAKE ]; then
-    Log "Cmake was not found on your System!"
-    Log "If you have Brew run : "
-    Log "brew install cmake"
     exit
   fi
 }
@@ -117,14 +116,26 @@ if [[ $1 == "update" ]]; then
   git pull
 fi
 if [[ $1 == "install" ]]; then
+  SetOSData
   version=$2
+  if [[ $version == "--lts" ]]; then
+    # Set Version to the latest if user wants latest!
+    version="1.45.0"
+  fi
   echo "Rust Install Version : $version" >> log
   PACKAGE_URL=$(GenerateUrl $version)
+  URL_CHECK=$(curl -Is $PACKAGE_URL | head -n1)
+  if [[ "$URL_CHECK" =~ "404" ]]; then
+    Error "The package rust-$version does not exist!"
+  fi
   echo "Package url : $PACKAGE_URL" >> log
+  SHA_URL="$PACKAGE_URL.sha256"
+  echo "Sha256 : $SHA_URL" >> log
   PACKAGE_DIR="$RUVM/packages"
   echo "Package Dir : $PACKAGE_DIR" >> log
   INSTALL_PREFIX="$RUVM/packages/rust-$version"
   echo "Install Prefix : $INSTALL_PREFIX" >> log
+
   if [ -d "$INSTALL_PREFIX" ]; then
     echo "rust-$version is already installed!" >> log
     Error "rust-$version is already installed!"
@@ -135,15 +146,29 @@ if [[ $1 == "install" ]]; then
   fi
   # Test if we can download rust from url
   Log "Installing rust-$version..."
-
+  Log "Downloading from $PACKAGE_URL..."
   curl -L# $PACKAGE_URL --output rust-$version.tar.gz
+  Log "Downloading sha256..."
+  curl -# $SHA_URL --output rust-$version.sha
+  Log "Checking sha256..."
+  FILE_SHA="$(shasum -a 256 rust-$version.tar.gz)"
+  DOWNLOADED_SHA=$(cat rust-$version.sha)
+  PATTERN="rust-$version.tar.gz"
+  FILE_SHA=${FILE_SHA/$PATTERN}
+  if [[ "$DOWNLOADED_SHA" =~ "$FILE_SHA" ]]; then
+    Log "Sha256 is correct!"
+  else
+    Log "Sha256 is incorrect"
+    echo "You should remove : "
+    echo "rust-$version.tar.gz"
+    echo "rust-$version.sha"
+    exit 1
+  fi
   Log "Untarring..."
   echo "Tar : " >> log
   tar -xvf rust-$version.tar.gz &>log
   echo "Done!" >> log
   Log "Installing..."
-  echo "Running SetOSData..." >> log
-  SetOSData
   cd rust-$version-$ARCH-$OSTYPE
   echo "CWD : rust-$version-$ARCH-$OSTYPE" >> log
   echo "sh install.sh --prefix=$RUVM/packages/rust-$version" >> log
@@ -151,24 +176,17 @@ if [[ $1 == "install" ]]; then
   if [[ $? == 1 ]]; then
     Error "Could not install rust-$version please check the file named 'log'"
   fi
-  Log "Finishing Up..."
-  BIN_FILE_COUNT=$(ls -1 $RUVM/bin | wc -l)
-  if [[ $BIN_FILE_COUNT == 1 ]]; then
-    echo "Running 'ln -s $RUVM/packages/rust-$version/bin/* $RUVM/bin/'" >> log
-    ln -s $RUVM/packages/rust-$version/bin/* $RUVM/bin/
-  else
-    Warning "Another version of rust is installed! To use this version run"
-    echo "ruvm use $version"
-  fi
   echo "Adding source script for use-shell command" >> log
   touch $PACKAGE_DIR/rust-$version/source.sh
   echo "Writting 'export PATH=$PACKAGE_DIR/rust-$version/bin:$PATH'" >> log
   echo "export PATH=$PACKAGE_DIR/rust-$version/bin:$PATH" >> $PACKAGE_DIR/rust-$version/source.sh
-  Log "Cleaning Up..."
   cd $RUVM
-  rm rust-$version.tar.gz
-  rm -rf rust-$version-$ARCH-$OSTYPE
+  rm rust-$version.tar.gz &>/dev/null
+  rm -rf rust-$version-$ARCH-$OSTYPE &>/dev/null
+  rm rust-$version.sha &>/dev/null
   Log "Rust-$version Installed!"
+  echo "To use this version run"
+  echo "ruvm use $version"
 fi
 if [[ $1 == "use" ]]; then
   version=$2
@@ -208,7 +226,7 @@ if [[ $1 == "list" ]]; then
   ls $RUVM/packages
   echo "Using : "
   using=$(cat $RUVM/current)
-  if [[ ! -f "RUVM/current" ]]; then
+  if [[ ! -f "$RUVM/current" ]]; then
     echo "No using any version of rust!"
   else
     echo "rust-$using"
@@ -216,6 +234,9 @@ if [[ $1 == "list" ]]; then
 fi
 if [[ $1 == "remove" ]]; then
   version=$2
+  if [[ ! -d "$RUVM/packages/rust-$version" ]]; then
+    Error "rust-$version is not installed or does not exist!"
+  fi
   Log "Removing rust-$version..."
   current=$(GetCurrent)
   if [[ $current == "$version" ]]; then
@@ -223,7 +244,7 @@ if [[ $1 == "remove" ]]; then
     Delink &>/dev/null
     Log "Delinked rust-$version"
   fi
-  Log "Remvoing $RUVM/packages/rust-$version..."
+  Log "Removing $RUVM/packages/rust-$version..."
   rm -rf $RUVM/packages/rust-$version
   if [[ -d "$RUVM/packages/rust-$version" ]]; then
     Error "Failed to remove $RUVM/packages/rust-$version!"
