@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Setup Varibles
 STABLE_VERSION=1.45.0
+# Make sure we are in the RUVM Directory!
+cd $RUVM
 function PrintUsage(){
   echo "RUVM -- RUst Version Manager"
   echo "Usage : "
@@ -112,6 +114,7 @@ if [[ ! $1 ]]; then
   PrintUsage
 fi
 if [[ $1 == "update" ]]; then
+  cd $RUVM
   echo "INFO : Pulling..."
   git pull
 fi
@@ -225,7 +228,7 @@ if [[ $1 == "list" ]]; then
   echo "Installed Versions of rust : "
   ls $RUVM/packages
   echo "Using : "
-  using=$(cat $RUVM/current)
+  using=$(cat $RUVM/current &>/dev/null)
   if [[ ! -f "$RUVM/current" ]]; then
     echo "No using any version of rust!"
   else
