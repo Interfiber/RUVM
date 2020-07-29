@@ -4,7 +4,7 @@ TARGET=$HOME/.ruvm
 echo "===> Downloading RUVM..."
 git clone https://github.com/Interfiber/RUVM ~/.ruvm
 echo "===> Setting up..."
-PROFILE_STRING="export RUVM=\$HOME/.ruvm/bin && export PATH=\$RUVM:\$PATH # Load in RUVM into path!"
+PROFILE_STRING="export RUVM=\$HOME/.ruvm && export PATH=\$RUVM/bin:\$PATH # Load in RUVM into path!"
 if [[ $SHELL =~ "bash" ]]; then
   PROFILE="$HOME/.bash_profile"
 elif [[ $SHELL =~ "zsh" ]]; then
