@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Setup Varibles
-STABLE_VERSION=1.45.0
 # Make sure we are in the RUVM Directory!
 cd $RUVM
 function PrintUsage(){
@@ -123,7 +122,7 @@ if [[ $1 == "install" ]]; then
   version=$2
   if [[ $version == "--lts" ]]; then
     # Set Version to the latest if user wants latest!
-    version="1.45.1"
+    version="1.45.2"
   fi
   echo "Rust Install Version : $version" >> log
   PACKAGE_URL=$(GenerateUrl $version)
