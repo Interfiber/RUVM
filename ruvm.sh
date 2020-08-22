@@ -37,15 +37,10 @@ function CheckForTools(){
   # gpg
   GPG=$(FindTool "gpg")
   if [ ! -f $CURL ]; then
-    Log "gpg was not found on your System!"
-    Log "If you have Brew run : "
-    Log "brew install gnugpg"
-    exit
-  fi
-  if [ ! -f $GPG ]; then
     Log "Curl was not found on your System!"
     Log "If you have Brew run : "
-    Log "brew install curl"
+    Log "brew install  curl"
+    exit
   fi
   if [ ! -f $GREP ]; then
     Log "Grep was not found on your System!"
