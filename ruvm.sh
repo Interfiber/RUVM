@@ -35,7 +35,6 @@ function CheckForTools(){
   # Bash
   BASH=$(FindTool "bash")
   # gpg
-  GPG=$(FindTool "gpg")
   if [ ! -f $CURL ]; then
     Log "Curl was not found on your System!"
     Log "If you have Brew run : "
