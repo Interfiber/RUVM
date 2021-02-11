@@ -116,7 +116,7 @@ if [[ $1 == "install" ]]; then
   version=$2
   if [[ $version == "--lts" ]]; then
     # Set Version to the latest if user wants latest!
-    version="1.49.0"
+    version="1.50.0"
   fi
   echo "Rust Install Version : $version" >> log
   PACKAGE_URL=$(GenerateUrl $version)
